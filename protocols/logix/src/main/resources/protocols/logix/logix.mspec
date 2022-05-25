@@ -93,27 +93,19 @@
                [array      byte   servicesData count 'serviceLen - 6 - (2 * serviceNb)']
         ]
         ['0x52','false'   CipUnconnectedRequest
-               [implicit   uint    8    requestPathSize ]
-               [optional   PathSegment  pathSegment0 'requestPathSize - pathSegment0.dataSize']
-               [optional   PathSegment  pathSegment1 'requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize']
-
-
-               [reserved   uint    8   '0x20']   // setRequestPathLogicalClassSegment
-               [reserved   uint    8   '0x06']   // set request class path
-               [reserved   uint    8   '0x24']   // setRequestPathLogicalInstanceSegment
-               [reserved   uint    8   '0x01']   // setRequestPathInstance
-               [reserved   uint    16  '0x9D05']   //Timeout 5s
-               [implicit   uint    16  messageSize   'lengthInBytes - 10 - 4']   //subtract above and routing
-               [simple     CipService('messageSize')  unconnectedService ]
-               [const      uint    16  route 0x0001]
-               [simple     int     8   backPlane]
-               [simple     int     8   slot]
+               [simple     uint    8    requestPathSize ]
+               [simple     PathSegment  pathSegment0]
+               [optional   PathSegment  pathSegment1 '(requestPathSize - pathSegment0.dataSize) > 0']
+               [optional   PathSegment  pathSegment2 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize) > 0']
+               [optional   PathSegment  pathSegment3 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize - pathSegment2.dataSize) > 0']
+               [optional   PathSegment  pathSegment4 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize - pathSegment2.dataSize - pathSegment3.dataSize) > 0']
+               [optional   PathSegment  pathSegment5 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize - pathSegment2.dataSize - pathSegment3.dataSize - pathSegment4.dataSize) > 0']
         ]
         ['0x5B','false'     CipConnectionManagerRequest
                [simple      int     8           requestPathSize]
                [simple      ClassSegment        classSegment]
                [simple      InstanceSegment     instanceSegment]
-               [simple      unit    4           priority]
+               [simple      uint    4           priority]
                [simple      uint    4           tickTime]
                [simple      uint    8           timeoutTicks]
                [simple      uint    16          actualTimeout]
@@ -147,39 +139,50 @@
     ]
 ]
 
+[discriminatedType PathSegment
+    [discriminator  uint    3   pathSegment]
+    [discriminator  uint    5   dataSegment]
+    [typeSwitch pathSegment,dataSegment
+        ['0x04','0x11'      AnsiExtendedSymbolSegment
+            [implicit   uint    8   dataSize    'symbol.length']
+            [simple     vstring 'dataSize'  symbol]
+        ]
+    ]
+]
+
 [type   InstanceSegment
-                [simple     uint    3   pathSegmentType]
-                [simple     uint    3   logicalSegmentType]
-                [simple     uint    2   logicalSegmentFormat]
-                [simple     uint    8   instance]
+    [simple     uint    3   pathSegmentType]
+    [simple     uint    3   logicalSegmentType]
+    [simple     uint    2   logicalSegmentFormat]
+    [simple     uint    8   instance]
 ]
 
 [type   ClassSegment
-                [simple     uint    3   pathSegmentType]
-                [simple     uint    3   logicalSegmentType]
-                [simple     uint    2   logicalSegmentFormat]
-                [simple     uint    8   class]
+    [simple     uint    3   pathSegmentType]
+    [simple     uint    3   logicalSegmentType]
+    [simple     uint    2   logicalSegmentFormat]
+    [simple     uint    8   class]
 ]
 
 [type   PortSegment
-                [simple     uint    3   portSegmentType]
-                [simple     bool    1   extendedLinkAddress]
-                [simple     uint    4   port]
-                [simple     uint    8   linkAddress]
+    [simple     uint    3   portSegmentType]
+    [simple     bit         extendedLinkAddress]
+    [simple     uint    4   port]
+    [simple     uint    8   linkAddress]
 ]
 
 [type   NetworkConnectionParameters
-               [simple      bool    1   owner]
-               [simple      uint    2   connectionType]
-               [simple      uint    2   priority]
-               [simple      bool    1   connectionSizeType]
-               [simple      uint    16  connectionSize]
+   [simple      bit         owner]
+   [simple      uint    2   connectionType]
+   [simple      uint    2   priority]
+   [simple      bit         connectionSizeType]
+   [simple      uint    16  connectionSize]
 ]
 
 [type   TransportType
-               [simple      bool    1   direction]
-               [simple      uint    3   trigger]
-               [simple      uint    4   class]
+   [simple      bit        direction]
+   [simple      uint    3   trigger]
+   [simple      uint    4   class]
 ]
 
 [type   Services  (uint   16   servicesLen)

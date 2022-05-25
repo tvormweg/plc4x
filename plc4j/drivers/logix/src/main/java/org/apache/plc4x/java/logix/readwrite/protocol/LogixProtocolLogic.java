@@ -210,13 +210,14 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             Services data = new Services(nb, offsets, serviceArr, -1);
             //Encapsulate the data
 
-            AnsiExtendedSymbolSegment pathSegment0 = new AnsiExtendedSymbolSegment();
+            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment("test");
 
             CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, 0, 2,
                 new CipExchange(
                     new CipUnconnectedRequest(
-                        pathSegment0.length(),
-                        pathSegment0
+                        (short) pathSegment0.getLengthInBytes(),
+                        pathSegment0,
+                        (Integer) 0
                     ),
                     -1
                 ),
@@ -241,13 +242,19 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
                     transaction.endRequest();
                 }));
         } else if (request.size() == 1) {
+
+            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment("test");
+
             CipExchange exchange = new CipExchange(
                 new CipUnconnectedRequest(
-                    request.get(0), (byte) configuration.getBackplane(), (byte) configuration.getSlot(), -1
+                    (short) pathSegment0.getLengthInBytes(),
+                    pathSegment0,
+                    (Integer) 0
                 ),
                 -1
             );
-            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, exchange, -1);
+
+            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, 0, 2, exchange, -1);
             transaction.submit(() -> context.sendRequest(pkt)
                 .expectResponse(EipPacket.class, REQUEST_TIMEOUT)
                 .onTimeout(future::completeExceptionally)
@@ -425,10 +432,13 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
         RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
         if (items.size() == 1) {
             tm.startRequest();
-            CipRRData rrdata = new CipRRData(sessionHandle, 0L, senderContext, 0L,
+            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment("test");
+            CipRRData rrdata = new CipRRData(sessionHandle, 0L, senderContext, 0L, 0, 2,
                 new CipExchange(
                     new CipUnconnectedRequest(
-                        items.get(0), (byte) configuration.getBackplane(), (byte) configuration.getSlot(), -1
+                        (short) pathSegment0.getLengthInBytes(),
+                        pathSegment0,
+                        (Integer) 0
                     ),
                     -1
                 ),
@@ -465,13 +475,14 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             Services data = new Services(nb, offsets, serviceArr, -1);
             //Encapsulate the data
 
-            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L,
+            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment("test");
+
+            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, 0, 2,
                 new CipExchange(
                     new CipUnconnectedRequest(
-                        new MultipleServiceRequest(data, -1),
-                        (byte) configuration.getBackplane(),
-                        (byte) configuration.getSlot(),
-                        -1
+                        (short) pathSegment0.getLengthInBytes(),
+                        pathSegment0,
+                        (Integer) 0
                     ),
                     -1
                 ),

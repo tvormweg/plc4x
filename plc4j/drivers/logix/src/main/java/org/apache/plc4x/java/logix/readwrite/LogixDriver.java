@@ -88,7 +88,7 @@ public class LogixDriver extends GeneratedDriverBase<EipPacket> {
     @Override
     protected ProtocolStackConfigurer<EipPacket> getStackConfigurer() {
         return SingleProtocolStackConfigurer.builder(EipPacket.class, EipPacket::staticParse)
-            .withProtocol(LogixProtocolLogix.class)
+            .withProtocol(LogixProtocolLogic.class)
             .withPacketSizeEstimator(ByteLengthEstimator.class)
             .littleEndian()
             .build();

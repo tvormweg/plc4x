@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.plc4x.java.eip.readwrite;
+package org.apache.plc4x.java.logix.readwrite;
 
 import org.apache.plc4x.test.parserserializer.ParserSerializerTestsuiteRunner;
 

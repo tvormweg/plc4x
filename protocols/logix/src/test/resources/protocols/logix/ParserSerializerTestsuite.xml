@@ -18,7 +18,7 @@
   under the License.
   -->
 <test:testsuite xmlns:test="https://plc4x.apache.org/schemas/parser-serializer-testsuite.xsd"
-                byteOrder="BIG_ENDIAN">
+                byteOrder="LITTLE_ENDIAN">
 
   <name>LOGIX</name>
 
@@ -27,7 +27,7 @@
 
   <testcase>
     <name>Register Session</name>
-    <raw>00650004000000000000000000000000000000000000000000010000</raw>
+    <raw>650004000000000000000000302e382e332020200000000001000000</raw>
     <root-type>EipPacket</root-type>
     <xml>
       <EipPacket>
@@ -36,14 +36,14 @@
         <sessionHandle dataType="uint" bitLength="32">0</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext isList="true">
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
-          <value dataType="uint" bitLength="8">0</value>
+          <value dataType="uint" bitLength="8">48</value>
+          <value dataType="uint" bitLength="8">46</value>
+          <value dataType="uint" bitLength="8">56</value>
+          <value dataType="uint" bitLength="8">46</value>
+          <value dataType="uint" bitLength="8">51</value>
+          <value dataType="uint" bitLength="8">32</value>
+          <value dataType="uint" bitLength="8">32</value>
+          <value dataType="uint" bitLength="8">32</value>
         </senderContext>
         <options dataType="uint" bitLength="32">0</options>
         <EipConnectionRequest>
@@ -57,7 +57,7 @@
   <testcase>
     <name>CIP Read Request</name>
     <raw>
-      006F0028000012340000000001000000000000010000000000000000000000020000000000B200185202200624019D05000A4C03910472617465000100010104
+      70003800c9070440000000005765277265000000000000000000000000000200a10004005942feffb10024000100520d91124b4347455f534d503030385f4c4331353532910370505600010000000000
     </raw>
     <root-type>EipPacket</root-type>
     <xml>

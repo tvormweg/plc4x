@@ -95,11 +95,6 @@
         ['0x52','false'   CipUnconnectedRequest
                [simple     uint    8    requestPathSize ]
                [simple     PathSegment  pathSegment0]
-               [optional   PathSegment  pathSegment1 '(requestPathSize - pathSegment0.dataSize) > 0']
-               [optional   PathSegment  pathSegment2 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize) > 0']
-               [optional   PathSegment  pathSegment3 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize - pathSegment2.dataSize) > 0']
-               [optional   PathSegment  pathSegment4 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize - pathSegment2.dataSize - pathSegment3.dataSize) > 0']
-               [optional   PathSegment  pathSegment5 '(requestPathSize - pathSegment0.dataSize - pathSegment1.dataSize - pathSegment2.dataSize - pathSegment3.dataSize - pathSegment4.dataSize) > 0']
         ]
         ['0x5B','false'     CipConnectionManagerRequest
                [simple      int     8           requestPathSize]

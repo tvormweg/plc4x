@@ -26,8 +26,8 @@ public class LogixFieldHandler implements PlcFieldHandler {
 
     @Override
     public PlcField createField(String fieldQuery) throws PlcInvalidFieldException {
-       if(EipField.matches(fieldQuery)){
-           return EipField.of(fieldQuery);
+       if(LogixField.matches(fieldQuery)){
+           return LogixField.of(fieldQuery);
        }
        else throw new PlcInvalidFieldException("Invalid field "+fieldQuery);
     }

@@ -41,7 +41,28 @@
                 [simple     uint    16    itemCount]
                 [simple    CipExchange('len - 6')   exchange]
             ]
+            ['0x0070' SendUnitData
+                [const      uint    32     interfaceHandle  0x00000000]
+                [simple     uint    16     timeout]
+                [simple     uint    16     itemCount]
+                [array      TypeId         typeId   count   'itemCount']
+            ]
         ]
+]
+
+[discriminatedType  TypeId
+    [discriminator  uint    16  id]
+    [typeSwitch id
+        ['0x00A1'   ConnectedAddressItem
+            [simple         uint    16  size]
+            [simple         uint    32  connectionId]
+        ]
+        ['0x00B1'   ConnectedAddressItem
+            [simple         uint    16  size]
+            [simple         uint    16  sequenceCount]
+            [simple         CipService('size - 2')    service]
+        ]
+    ]
 ]
 
 [type  CipExchange (uint 16 exchangeLen)  //We pass then length down to evey sub-type to be able to provide the remaining data size
@@ -95,6 +116,7 @@
         ['0x52','false'   CipUnconnectedRequest
                [simple     uint    8    requestPathSize ]
                [simple     PathSegment  pathSegment0]
+               [simple     PathSegment  pathSegment1]
         ]
         ['0x5B','false'     CipConnectionManagerRequest
                [simple      int     8           requestPathSize]
@@ -121,6 +143,7 @@
 
         ]
         ['0x5B','true'     CipConnectionManagerResponse
+               [reserved    uint    24          '0x000000']
                [simple      uint    32          otConnectionId]
                [simple      uint    32          toConnectionId]
                [simple      uint    16          connectionSerialNumber]
@@ -128,7 +151,7 @@
                [simple      uint    32          originatorSerialNumber]
                [simple      uint    32          otApi]
                [simple      uint    32          toApi]
-               [implicit    uint    8           replySize   'serviceLen - 46']
+               [implicit    uint    8           replySize   'serviceLen - 30']
                [reserved    uint    8           '0x00']
         ]
     ]

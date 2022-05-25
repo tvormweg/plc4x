@@ -217,6 +217,7 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
                     new CipUnconnectedRequest(
                         (short) pathSegment0.getLengthInBytes(),
                         pathSegment0,
+                        pathSegment0,
                         (Integer) 0
                     ),
                     -1
@@ -248,6 +249,7 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             CipExchange exchange = new CipExchange(
                 new CipUnconnectedRequest(
                     (short) pathSegment0.getLengthInBytes(),
+                    pathSegment0,
                     pathSegment0,
                     (Integer) 0
                 ),
@@ -438,6 +440,7 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
                     new CipUnconnectedRequest(
                         (short) pathSegment0.getLengthInBytes(),
                         pathSegment0,
+                        pathSegment0,
                         (Integer) 0
                     ),
                     -1
@@ -481,6 +484,7 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
                 new CipExchange(
                     new CipUnconnectedRequest(
                         (short) pathSegment0.getLengthInBytes(),
+                        pathSegment0,
                         pathSegment0,
                         (Integer) 0
                     ),

@@ -43,6 +43,7 @@
     <module>eip</module>
     <module>firmata</module>
     <module>knxnetip</module>
+    <module>logix</module>
     <module>mock</module>
     <module>modbus</module>
     <module>opcua</module>

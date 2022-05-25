@@ -161,7 +161,7 @@
     [simple     uint    3   pathSegmentType]
     [simple     uint    3   logicalSegmentType]
     [simple     uint    2   logicalSegmentFormat]
-    [simple     uint    8   class]
+    [simple     uint    8   classSegment]
 ]
 
 [type   PortSegment
@@ -180,9 +180,9 @@
 ]
 
 [type   TransportType
-   [simple      bit        direction]
+   [simple      bit         direction]
    [simple      uint    3   trigger]
-   [simple      uint    4   class]
+   [simple      uint    4   classTransport]
 ]
 
 [type   Services  (uint   16   servicesLen)

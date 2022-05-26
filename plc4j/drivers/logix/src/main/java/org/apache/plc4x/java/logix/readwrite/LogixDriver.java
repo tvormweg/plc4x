@@ -38,12 +38,12 @@ public class LogixDriver extends GeneratedDriverBase<EipPacket> {
     public static final int PORT = 44818;
     @Override
     public String getProtocolCode() {
-        return "eip";
+        return "logix";
     }
 
     @Override
     public String getProtocolName() {
-        return "EthernetIP";
+        return "Allen Bradley Logix";
     }
 
     @Override

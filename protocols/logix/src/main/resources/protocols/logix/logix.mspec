@@ -68,7 +68,7 @@
 [type  CipExchange (uint 16 exchangeLen)  //We pass then length down to evey sub-type to be able to provide the remaining data size
     [const          uint 32                         nullPtr             0x0                   ]  //NullPointerAddress
     [const          uint 16                         unconnectedData     0x00B2                ]  //Connection Manager
-    [implicit       uint 16                         size                'lengthInBytes - 8 - 2' ]  //remove fields above and routing
+    [implicit       uint 16                         size                'lengthInBytes - 8' ]  //remove fields above and routing
     [simple         CipService('exchangeLen - 10')  service                                     ]
 ]
 
@@ -120,12 +120,11 @@
         ]
         ['0x5B','false'     CipConnectionManagerRequest
                [simple      int     8           requestPathSize]
-               [simple      ClassSegment        classSegment]
-               [simple      InstanceSegment     instanceSegment]
+               [simple      PathSegment         classSegment]
+               [simple      PathSegment         instanceSegment]
                [simple      uint    4           priority]
                [simple      uint    4           tickTime]
                [simple      uint    8           timeoutTicks]
-               [simple      uint    16          actualTimeout]
                [simple      uint    32          otConnectionId]
                [simple      uint    32          toConnectionId]
                [simple      uint    16          connectionSerialNumber]
@@ -139,7 +138,9 @@
                [simple      NetworkConnectionParameters toConnectionParameters]
                [simple      TransportType       transportType]
                [simple      uint    8           connectionPathSize]
-               [simple      PortSegment         portSegment]
+               [simple      PathSegment         connectionPathPortSegment]
+               [simple      PathSegment         connectionPathClassSegment]
+               [simple      PathSegment         connectionPathInstanceSegment]
 
         ]
         ['0x5B','true'     CipConnectionManagerResponse
@@ -159,11 +160,33 @@
 
 [discriminatedType PathSegment
     [discriminator  uint    3   pathSegment]
-    [discriminator  uint    5   dataSegment]
-    [typeSwitch pathSegment,dataSegment
-        ['0x04','0x11'      AnsiExtendedSymbolSegment
+    [typeSwitch pathSegment
+        ['0x00'      PortSegment
+            [simple bit extendedLinkAddress]
+            [simple uint 4  port]
+            [simple uint    8   linkAddress]
+        ]
+        ['0x01'      LogicalSegment
+            [simple LogicalSegmentType  segmentType]
+        ]
+        ['0x04'      AnsiExtendedSymbolSegment
+            [simple  uint    5   dataSegment]
             [implicit   uint    8   dataSize    'symbol.length']
             [simple     vstring 'dataSize'  symbol]
+        ]
+    ]
+]
+
+[discriminatedType LogicalSegmentType
+    [discriminator  uint    3   logicalSegmentType]
+    [typeSwitch logicalSegmentType
+        ['0x00' ClassID
+            [simple uint    2   format]
+            [simple uint    8   segmentClass]
+        ]
+        ['0x01' InstanceID
+            [simple uint    2   format]
+            [simple uint    8   instance]
         ]
     ]
 ]
@@ -182,19 +205,16 @@
     [simple     uint    8   classSegment]
 ]
 
-[type   PortSegment
-    [simple     uint    3   portSegmentType]
-    [simple     bit         extendedLinkAddress]
-    [simple     uint    4   port]
-    [simple     uint    8   linkAddress]
-]
 
 [type   NetworkConnectionParameters
+   [simple      uint    16  connectionSize]
+   [reserved    uint    8   '0x00']
    [simple      bit         owner]
    [simple      uint    2   connectionType]
+   [reserved    bit         'false']
    [simple      uint    2   priority]
    [simple      bit         connectionSizeType]
-   [simple      uint    16  connectionSize]
+   [reserved    bit         'false']
 ]
 
 [type   TransportType

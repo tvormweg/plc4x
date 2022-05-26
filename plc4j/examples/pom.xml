@@ -109,6 +109,7 @@
             <usedDependency>org.apache.plc4x:plc4j-driver-eip</usedDependency>
             <usedDependency>org.apache.plc4x:plc4j-driver-firmata</usedDependency>
             <usedDependency>org.apache.plc4x:plc4j-driver-knxnetip</usedDependency>
+            <usedDependency>org.apache.plc4x:plc4j-driver-logix</usedDependency>
             <usedDependency>org.apache.plc4x:plc4j-driver-modbus</usedDependency>
             <usedDependency>org.apache.plc4x:plc4j-driver-opcua</usedDependency>
             <usedDependency>org.apache.plc4x:plc4j-driver-profinet</usedDependency>
@@ -186,6 +187,12 @@
     <dependency>
       <groupId>org.apache.plc4x</groupId>
       <artifactId>plc4j-driver-knxnetip</artifactId>
+      <version>0.10.0-SNAPSHOT</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.plc4x</groupId>
+      <artifactId>plc4j-driver-logix</artifactId>
       <version>0.10.0-SNAPSHOT</version>
       <scope>runtime</scope>
     </dependency>

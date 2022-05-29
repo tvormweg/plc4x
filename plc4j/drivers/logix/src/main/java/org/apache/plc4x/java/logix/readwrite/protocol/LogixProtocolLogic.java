@@ -42,19 +42,27 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.security.Provider;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements HasConfiguration<LogixConfiguration> {
 
     private static final Logger logger = LoggerFactory.getLogger(LogixProtocolLogic.class);
     public static final Duration REQUEST_TIMEOUT = Duration.ofMillis(10000);
 
-    private static final List<Short> emptySenderContext = Arrays.asList((short) 0x00, (short) 0x00, (short) 0x00,
-        (short) 0x00, (short) 0x00, (short) 0x00, (short) 0x00, (short) 0x00);
-    private List<Short> senderContext;
+    private static final byte[] DEFAULT_SENDER_CONTEXT = "PLC4X   ".getBytes(StandardCharsets.US_ASCII);
+    private static final long EMPTY_SESSION_HANDLE = 0L;
+    private static final long EMPTY_INTERFACE_HANDLE = 0L;
+
+    private byte[] senderContext;
+
+    private long connectionId = 0L;
+    private int sequenceCount = 1;
     private LogixConfiguration configuration;
 
     private final AtomicInteger transactionCounterGenerator = new AtomicInteger(10);
@@ -70,24 +78,26 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
 
     @Override
     public void onConnect(ConversationContext<EipPacket> context) {
-        logger.debug("Sending RegisterSession EIP Package");
+        logger.debug("Sending Register Session EIP Package");
         EipConnectionRequest connectionRequest =
-            new EipConnectionRequest(0L, 0L, emptySenderContext, 0L);
+            new EipConnectionRequest(
+                EMPTY_SESSION_HANDLE,
+                CIPStatus.Success.getValue(),
+                DEFAULT_SENDER_CONTEXT,
+                0L);
         context.sendRequest(connectionRequest)
             .expectResponse(EipPacket.class, REQUEST_TIMEOUT).unwrap(p -> p)
             .check(p -> p instanceof EipConnectionRequest)
             .handle(p -> {
-                if (p.getStatus() == 0L) {
+                if (p.getStatus() == CIPStatus.Success.getValue()) {
                     sessionHandle = p.getSessionHandle();
                     senderContext = p.getSenderContext();
                     logger.debug("Got assigned with Session {}", sessionHandle);
-                    // Send an event that connection setup is complete.
                     onConnectOpenConnectionManager(context, p);
 
                 } else {
                     logger.warn("Got status code [{}]", p.getStatus());
                 }
-
             });
     }
 
@@ -99,21 +109,20 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
 
         CipExchange exchange = new CipExchange(
             new CipConnectionManagerRequest(
-                (byte) 2,
                 classSegment,
                 instanceSegment,
                 (byte) 0,
                 (byte) 10,
                 (short) 14,
-                (long) 536870914,
-                (long) 33944,
-                (int) 8592,
-                (int) 4919,
-                (long) 42,
+                536870914L,
+                33944L,
+                8592,
+                4919,
+                42L,
                 (short) 3,
-                (long) 2101812,
+                2101812L,
                 new NetworkConnectionParameters(
-                    (int) 4002,
+                    4002,
                     false,
                     (byte) 2,
                     (byte) 0,
@@ -121,7 +130,7 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
                 ),
                 (long) 2113537,
                 new NetworkConnectionParameters(
-                    (int) 4002,
+                    4002,
                     false,
                     (byte) 2,
                     (byte) 0,
@@ -142,6 +151,7 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             response.getStatus(),
             senderContext,
             0L,
+            EMPTY_INTERFACE_HANDLE,
             0,
             2,
             exchange,
@@ -154,8 +164,13 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             .check(p -> p instanceof CipRRData)
             .handle(p -> {
                 if (p.getStatus() == 0L) {
-                    sessionHandle = p.getSessionHandle();
-                    senderContext = p.getSenderContext();
+                    CipRRData rrData = (CipRRData) p;
+                    sessionHandle = rrData.getSessionHandle();
+                    senderContext = rrData.getSenderContext();
+                    CipExchange connectionManagerExchange = rrData.getExchange();
+                    CipConnectionManagerResponse connectionManagerResponse = (CipConnectionManagerResponse) connectionManagerExchange.getService();
+                    this.connectionId = connectionManagerResponse.getOtConnectionId();
+
                     logger.debug("Got assigned with Session {}", sessionHandle);
                     // Send an event that connection setup is complete.
                     context.fireConnected();
@@ -168,11 +183,80 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
     }
 
 
+    @Override
+    public void onDisconnect(ConversationContext<EipPacket> context) {
+        if (this.connectionId != 0L) {
+            logger.debug("Sending Connection Manager Close Event");
+            PathSegment classSegment = new LogicalSegment(new ClassID((byte) 0, (short) 6));
+            PathSegment instanceSegment = new LogicalSegment(new InstanceID((byte) 0, (short) 1));
+
+            CipExchange exchange = new CipExchange(
+                new CipConnectionManagerCloseRequest(
+                    (byte) 2,
+                    classSegment,
+                    instanceSegment,
+                    (byte) 0,
+                    (byte) 10,
+                    (short) 14,
+                    8592,
+                    4919,
+                    42L,
+                    (short) 3,
+                    new PortSegment(false, (byte) 1, (short) 0),
+                    new LogicalSegment(new ClassID((byte) 0, (short) 2)),
+                    new LogicalSegment(new InstanceID((byte) 0, (short) 1)),
+                    0
+                ),
+                -1
+            );
+
+            CipRRData eipWrapper = new CipRRData(
+                sessionHandle,
+                0L,
+                senderContext,
+                0L,
+                EMPTY_INTERFACE_HANDLE,
+                0,
+                2,
+                exchange,
+                -1
+            );
+
+
+            context.sendRequest(eipWrapper)
+                .expectResponse(EipPacket.class, REQUEST_TIMEOUT).unwrap(p -> p)
+                .check(p -> p instanceof CipRRData)
+                .handle(p -> {
+                    logger.debug("Un-Registering Session");
+                    onDisconnectUnregisterSession(context);
+                });
+        } else {
+            onDisconnectUnregisterSession(context);
+        }
+    }
+
+
+    public void onDisconnectUnregisterSession(ConversationContext<EipPacket> context) {
+        logger.debug("Sending Un RegisterSession EIP Package");
+        EipDisconnect connectionRequest =
+            new EipDisconnect(
+                0L,
+                sessionHandle,
+                DEFAULT_SENDER_CONTEXT,
+                0L);
+        context.sendRequest(connectionRequest)
+            .expectResponse(EipPacket.class, Duration.ofMillis(1))
+            .onTimeout(p -> context.fireDisconnected())
+            .handle(p -> context.fireDisconnected());
+    }
 
     @Override
     public CompletableFuture<PlcReadResponse> read(PlcReadRequest readRequest) {
+        CompletableFuture<PlcReadResponse> future = new CompletableFuture<>();
+        RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
+
         DefaultPlcReadRequest request = (DefaultPlcReadRequest) readRequest;
-        List<CipReadRequest> requests = new ArrayList<>(request.getNumberOfFields());
+        List<CipService> requests = new ArrayList<>(request.getNumberOfFields());
         for (PlcField field : request.getFields()) {
             LogixField plcField = (LogixField) field;
             String tag = plcField.getTag();
@@ -180,13 +264,67 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             if (plcField.getElementNb() > 1) {
                 elements = plcField.getElementNb();
             }
-            CipReadRequest req = new CipReadRequest(getRequestSize(tag), toAnsi(tag), elements, -1);
-            requests.add(req);
+            try {
+                CipReadRequest req = new CipReadRequest(
+                    toAnsi(tag),
+                    1,
+                    new byte[6],
+                    -1);
+                requests.add(req);
+            } catch (SerializationException e) {
+                e.printStackTrace();
+            }
         }
-        return toPlcReadResponse(readRequest, readInternal(requests));
+
+        List<TypeId> typeIds =new ArrayList<>(2);
+        typeIds.add(new ConnectedAddressItem(this.connectionId));
+        if (requests.size() == 1) {
+            typeIds.add(new ConnectedDataItem(this.sequenceCount, requests.get(0)));
+        } else {
+            List<Integer> offsets = new ArrayList<>(requests.size());
+            offsets.add(6);
+            for (CipService cipRequest : requests) {
+                if (requests.indexOf(cipRequest) != (requests.size() - 1)) {
+                    offsets.add(offsets.get(requests.indexOf(cipRequest)) + cipRequest.getLengthInBytes());
+                }
+
+            }
+            MultipleServiceRequest serviceRequest = new MultipleServiceRequest(new Services(requests.size(), offsets, requests, 0), 0);
+            typeIds.add(new ConnectedDataItem(this.sequenceCount, serviceRequest));
+        }
+
+
+        SendUnitData pkt = new SendUnitData(
+            sessionHandle,
+            0L,
+            DEFAULT_SENDER_CONTEXT,
+            0L,
+            0,
+            2,
+            typeIds
+        );
+
+        transaction.submit(() -> context.sendRequest(pkt)
+            .expectResponse(EipPacket.class, REQUEST_TIMEOUT)
+            .onTimeout(future::completeExceptionally)
+            .onError((p, e) -> future.completeExceptionally(e))
+            .check(p -> p instanceof SendUnitData)
+            .check(p -> p.getSessionHandle() == sessionHandle)
+            //.check(p -> p.getSenderContext() == senderContext)
+            .unwrap(p -> (SendUnitData) p)
+            .handle(p -> {
+                SendUnitData unitData = (SendUnitData) p;
+                List<TypeId> responseTypeIds = unitData.getTypeId();
+                ConnectedDataItem dataItem = (ConnectedDataItem) responseTypeIds.get(1);
+                future.complete(decodeReadResponse(dataItem.getService(), request));
+                // Finish the request-transaction.
+                transaction.endRequest();
+            }));
+
+        return future;
     }
 
-    private byte getRequestSize(String tag) {
+    private short getRequestSize(String tag) {
         //We need the size of the request in words (0x91, tagLength, ... tag + possible pad)
         // Taking half to get word size
         boolean isArray = false;
@@ -205,155 +343,51 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             + (tagIsolated.length() % 2)
             + (isArray ? 2 : 0)
             + (isStruct ? 2 : 0);
-        byte requestPathSize = (byte) (dataLength / 2);
-        return requestPathSize;
+        return (short) (dataLength / 2);
     }
 
-    private byte[] toAnsi(String tag) {
-        int arrayIndex = 0;
-        boolean isArray = false;
-        boolean isStruct = false;
-        String tagFinal = tag;
-        if (tag.contains("[")) {
-            isArray = true;
-            String index = tag.substring(tag.indexOf("[") + 1, tag.indexOf("]"));
-            arrayIndex = Integer.parseInt(index);
-            tagFinal = tag.substring(0, tag.indexOf("["));
-        }
-        if (tag.contains(".")) {
-            tagFinal = tag.substring(0, tag.indexOf("."));
-            isStruct = true;
-        }
-        boolean isPadded = tagFinal.length() % 2 != 0;
-        int dataSegLength = 2 + tagFinal.length()
-            + (isPadded ? 1 : 0)
-            + (isArray ? 2 : 0);
+    /*
+        Takes a Tag name e.g. ZZZ_ZZZ.XXX and returns a buffer containing an array of ANSI Extended Symbol Seqments
+     */
+    public static byte[] toAnsi(String tag) throws SerializationException {
+        final Pattern RESOURCE_ADDRESS_PATTERN = Pattern.compile("([.\\[\\]])*([A-Za-z_0-9]+){1}");
+        Matcher matcher = RESOURCE_ADDRESS_PATTERN.matcher(tag);
+        List<PathSegment> segments = new LinkedList<>();
+        String tagWithoutQualifiers = "";
+        int lengthBytes = 0;
+        while (matcher.find()) {
+            String identifier = matcher.group(2);
+            String qualifier = matcher.group(1);
 
-        if (isStruct) {
-            for (String subStr : tag.substring(tag.indexOf(".") + 1).split("\\.", -1)) {
-                dataSegLength += 2 + subStr.length() + subStr.length() % 2;
-            }
-        }
-
-        ByteBuffer buffer = ByteBuffer.allocate(dataSegLength).order(ByteOrder.LITTLE_ENDIAN);
-
-        buffer.put((byte) 0x91);
-        buffer.put((byte) tagFinal.length());
-        byte[] tagBytes = null;
-        tagBytes = tagFinal.getBytes(StandardCharsets.US_ASCII);
-
-        buffer.put(tagBytes);
-        buffer.position(2 + tagBytes.length);
-
-
-        if (isPadded) {
-            buffer.put((byte) 0x00);
-        }
-
-        if (isArray) {
-            buffer.put((byte) 0x28);
-            buffer.put((byte) arrayIndex);
-        }
-        if (isStruct) {
-            buffer.put(toAnsi(tag.substring(tag.indexOf(".") + 1, tag.length())));
-        }
-        return buffer.array();
-    }
-
-    private CompletableFuture<PlcReadResponse> toPlcReadResponse(PlcReadRequest readRequest, CompletableFuture<CipService> response) {
-        return response
-            .thenApply(p -> {
-                return ((PlcReadResponse) decodeReadResponse(p, readRequest));
-            });
-    }
-
-    private CompletableFuture<CipService> readInternal(List<CipReadRequest> request) {
-        CompletableFuture<CipService> future = new CompletableFuture<>();
-        RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-        if (request.size() > 1) {
-
-            short nb = (short) request.size();
-            List<Integer> offsets = new ArrayList<>(nb);
-            int offset = 2 + nb * 2;
-            for (int i = 0; i < nb; i++) {
-                offsets.add(offset);
-                offset += request.get(i).getLengthInBytes();
+            PathSegment newSegment;
+            if (qualifier != null) {
+                switch (qualifier) {
+                    case "[":
+                        newSegment = new LogicalSegment(new MemberID((byte) 0x00, (short) Short.parseShort(identifier)));
+                        segments.add(newSegment);
+                        break;
+                    default:
+                        newSegment = new DataSegment(new AnsiExtendedSymbolSegment(identifier, (short) 0));
+                        segments.add(newSegment);
+                        tagWithoutQualifiers += identifier;
+                }
+            } else {
+                newSegment = new DataSegment(new AnsiExtendedSymbolSegment(identifier, (short) 0));
+                segments.add(newSegment);
+                tagWithoutQualifiers += identifier;
             }
 
-            List<CipService> serviceArr = new ArrayList<>(nb);
-            for (int i = 0; i < nb; i++) {
-                serviceArr.add(request.get(i));
-            }
-            Services data = new Services(nb, offsets, serviceArr, -1);
-            //Encapsulate the data
-
-            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment((short) 4,"test");
-
-            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, 0, 2,
-                new CipExchange(
-                    new CipUnconnectedRequest(
-                        (short) pathSegment0.getLengthInBytes(),
-                        pathSegment0,
-                        pathSegment0,
-                        (Integer) 0
-                    ),
-                    -1
-                ),
-                -1
-            );
-
-
-            transaction.submit(() -> context.sendRequest(pkt)
-                .expectResponse(EipPacket.class, REQUEST_TIMEOUT)
-                .onTimeout(future::completeExceptionally)
-                .onError((p, e) -> future.completeExceptionally(e))
-                .check(p -> p instanceof CipRRData)
-                .check(p -> p.getSessionHandle() == sessionHandle)
-                //.check(p -> p.getSenderContext() == senderContext)
-                .unwrap(p -> (CipRRData) p)
-                .unwrap(p -> p.getExchange().getService()).check(p -> p instanceof MultipleServiceResponse)
-                .unwrap(p -> (MultipleServiceResponse) p)
-                .check(p -> p.getServiceNb() == nb)
-                .handle(p -> {
-                    future.complete(p);
-                    // Finish the request-transaction.
-                    transaction.endRequest();
-                }));
-        } else if (request.size() == 1) {
-
-            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment((short) 4,"test");
-
-            CipExchange exchange = new CipExchange(
-                new CipUnconnectedRequest(
-                    (short) pathSegment0.getLengthInBytes(),
-                    pathSegment0,
-                    pathSegment0,
-                    (Integer) 0
-                ),
-                -1
-            );
-
-            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, 0, 2, exchange, -1);
-            transaction.submit(() -> context.sendRequest(pkt)
-                .expectResponse(EipPacket.class, REQUEST_TIMEOUT)
-                .onTimeout(future::completeExceptionally)
-                .onError((p, e) -> future.completeExceptionally(e))
-                .check(p -> p instanceof CipRRData)
-                .check(p -> p.getSessionHandle() == sessionHandle)
-                //.check(p -> p.getSenderContext() == senderContext)
-                .unwrap(p -> (CipRRData) p)
-                .unwrap(p -> p.getExchange().getService()).check(p -> p instanceof CipReadResponse)
-                .unwrap(p -> (CipReadResponse) p)
-                .handle(p -> {
-                    future.complete(p);
-                    // Finish the request-transaction.
-                    transaction.endRequest();
-                }));
+            lengthBytes += newSegment.getLengthInBytes();
         }
-        return future;
+        WriteBufferByteBased buffer = new WriteBufferByteBased(lengthBytes, org.apache.plc4x.java.spi.generation.ByteOrder.LITTLE_ENDIAN);
+
+        for (PathSegment segment : segments) {
+            segment.serialize(buffer);
+        }
+        return buffer.getData();
     }
 
-    private PlcResponse decodeReadResponse(CipService p, PlcReadRequest readRequest) {
+    private PlcReadResponse decodeReadResponse(CipService p, PlcReadRequest readRequest) {
         Map<String, ResponseItem<PlcValue>> values = new HashMap<>();
         // only 1 field
         if (p instanceof CipReadResponse) {
@@ -493,31 +527,31 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
                 elements = field.getElementNb();
             }
 
-            //We need the size of the request in words (0x91, tagLength, ... tag + possible pad)
-            // Taking half to get word size
-            boolean isArray = false;
-            String tagIsolated = tag;
-            if (tag.contains("[")) {
-                isArray = true;
-                tagIsolated = tag.substring(0, tag.indexOf("["));
-            }
-            int dataLength = (tagIsolated.length() + 2 + (tagIsolated.length() % 2) + (isArray ? 2 : 0));
-            byte requestPathSize = (byte) (dataLength / 2);
             byte[] data = encodeValue(value, field.getType(), (short) elements);
-            CipWriteRequest writeReq = new CipWriteRequest(requestPathSize, toAnsi(tag), field.getType(), elements, data, -1);
-            items.add(writeReq);
+            try {
+                CipWriteRequest writeReq = new CipWriteRequest(toAnsi(tag), field.getType(), elements, data, -1);
+                items.add(writeReq);
+            } catch (SerializationException e) {
+                e.printStackTrace();
+            }
+
         }
 
         RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
         if (items.size() == 1) {
             tm.startRequest();
-            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment((short) 4,"test");
-            CipRRData rrdata = new CipRRData(sessionHandle, 0L, senderContext, 0L, 0, 2,
+
+            CipRRData rrdata = new CipRRData(
+                sessionHandle,
+                0L,
+                senderContext,
+                0L,
+                EMPTY_INTERFACE_HANDLE,
+                0,
+                2,
                 new CipExchange(
                     new CipUnconnectedRequest(
-                        (short) pathSegment0.getLengthInBytes(),
-                        pathSegment0,
-                        pathSegment0,
+                        new byte[10],
                         (Integer) 0
                     ),
                     -1
@@ -555,14 +589,19 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
             Services data = new Services(nb, offsets, serviceArr, -1);
             //Encapsulate the data
 
-            PathSegment pathSegment0 = new AnsiExtendedSymbolSegment((short) 4,"test");
 
-            CipRRData pkt = new CipRRData(sessionHandle, 0L, emptySenderContext, 0L, 0, 2,
+
+            CipRRData pkt = new CipRRData(
+                sessionHandle,
+                0L,
+                DEFAULT_SENDER_CONTEXT,
+                0L,
+                EMPTY_INTERFACE_HANDLE,
+                0,
+                2,
                 new CipExchange(
                     new CipUnconnectedRequest(
-                        (short) pathSegment0.getLengthInBytes(),
-                        pathSegment0,
-                        pathSegment0,
+                        new byte[10],
                         (Integer) 0
                     ),
                     -1
@@ -675,8 +714,6 @@ public class LogixProtocolLogic extends Plc4xProtocolBase<EipPacket> implements 
 
     @Override
     public void close(ConversationContext<EipPacket> context) {
-        logger.debug("Sending UnregisterSession EIP Pakcet");
-        context.sendRequest(new EipDisconnectRequest(sessionHandle, 0L, emptySenderContext, 0L)); //Unregister gets no response
-        logger.debug("Unregistred Session {}", sessionHandle);
+        onDisconnect(context);
     }
 }

@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 public class LogixField implements PlcField, Serializable {
 
     private static final Pattern ADDRESS_PATTERN =
-        Pattern.compile("^%(?<tag>[a-zA-Z_.0-9]+\\[?[0-9]*\\]?):?(?<dataType>[A-Z]*):?(?<elementNb>[0-9]*)");
+        Pattern.compile("^(?<tag>[a-zA-Z_.0-9]+\\[?[0-9]*\\]?):?(?<dataType>[A-Z]*):?(?<elementNb>[0-9]*)");
 
     private static final String TAG = "tag";
     private static final String ELEMENTS = "elementNb";
@@ -97,6 +97,8 @@ public class LogixField implements PlcField, Serializable {
             }
             if (!matcher.group(TYPE).isEmpty()) {
                 type = CIPDataTypeCode.valueOf(matcher.group(TYPE));
+            } else {
+                type = CIPDataTypeCode.DINT;
             }
             if (nb != 0) {
                 if (type != null) {

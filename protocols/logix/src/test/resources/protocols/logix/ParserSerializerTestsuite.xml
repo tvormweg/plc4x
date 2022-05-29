@@ -35,16 +35,7 @@
         <len dataType="uint" bitLength="16">4</len>
         <sessionHandle dataType="uint" bitLength="32">0</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
-        <senderContext isList="true">
-          <value dataType="uint" bitLength="8">48</value>
-          <value dataType="uint" bitLength="8">46</value>
-          <value dataType="uint" bitLength="8">56</value>
-          <value dataType="uint" bitLength="8">46</value>
-          <value dataType="uint" bitLength="8">51</value>
-          <value dataType="uint" bitLength="8">32</value>
-          <value dataType="uint" bitLength="8">32</value>
-          <value dataType="uint" bitLength="8">32</value>
-        </senderContext>
+        <senderContext dataType="byte" bitLength="64">0x302e382e33202020</senderContext>
         <options dataType="uint" bitLength="32">0</options>
         <EipConnectionRequest>
           <protocolVersion dataType="uint" bitLength="16">1</protocolVersion>

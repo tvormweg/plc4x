@@ -26,17 +26,17 @@
     [implicit      uint 16 len 'lengthInBytes - 24']
     [simple        uint 32 sessionHandle]
     [simple        uint 32 status]
-    [array         uint 8  senderContext count '8']
+    [array         byte    senderContext count '8']
     [simple        uint 32 options]
     [typeSwitch command
             ['0x0065' EipConnectionRequest
                 [const      uint    16   protocolVersion   0x01]
                 [const      uint    16   flags             0x00]
             ]
-            ['0x0066' EipDisconnectRequest
+            ['0x0066' EipDisconnect
             ]
             ['0x006F' CipRRData(uint 16 len)
-                [reserved   uint    32    '0x00000000']
+                [simple     uint    32    interfaceHandle]
                 [simple     uint    16    timeout]
                 [simple     uint    16    itemCount]
                 [simple    CipExchange('len - 6')   exchange]
@@ -54,11 +54,11 @@
     [discriminator  uint    16  id]
     [typeSwitch id
         ['0x00A1'   ConnectedAddressItem
-            [simple         uint    16  size]
+            [reserved       uint    16  '0x04']
             [simple         uint    32  connectionId]
         ]
-        ['0x00B1'   ConnectedAddressItem
-            [simple         uint    16  size]
+        ['0x00B1'   ConnectedDataItem
+            [implicit       uint    16  size 'service.lengthInBytes + 2']
             [simple         uint    16  sequenceCount]
             [simple         CipService('size - 2')    service]
         ]
@@ -77,9 +77,10 @@
     [discriminator  uint    7   service]
     [typeSwitch service,response
         ['0x4C','false' CipReadRequest
-            [simple     int     8   requestPathSize]
-            [array      byte   tag   length  '(requestPathSize * 2)']
+            [implicit   int     8   requestPathSize 'COUNT(tag) / 2']
+            [array      byte   tag   count  '(requestPathSize * 2)']
             [simple     uint    16  elementNb]
+            [array      byte   data  count  '6']
         ]
         ['0x4C','true' CipReadResponse
               [reserved   uint            8   '0x00']
@@ -89,7 +90,7 @@
               [array      byte   data  count  'serviceLen - 6']
         ]
         ['0x4D','false' CipWriteRequest
-            [simple     int     8           requestPathSize]
+            [implicit   int     8   requestPathSize 'COUNT(tag) / 2']
             [array      byte           tag   length  'requestPathSize * 2']
             [simple     CIPDataTypeCode     dataType]
             [simple     uint    16          elementNb]
@@ -99,6 +100,31 @@
             [reserved   uint        8   '0x00']
             [simple     uint        8   status]
             [simple     uint        8   extStatus]
+        ]
+        ['0x4E','false' CipConnectionManagerCloseRequest
+              [simple      int     8           requestPathSize]
+              [simple      PathSegment         classSegment]
+              [simple      PathSegment         instanceSegment]
+              [simple      uint    4           priority]
+              [simple      uint    4           tickTime]
+              [simple      uint    8           timeoutTicks]
+              [simple      uint    16          connectionSerialNumber]
+              [simple      uint    16          originatorVendorId]
+              [simple      uint    32          originatorSerialNumber]
+              [simple      uint    8           connectionPathSize]
+              [reserved    byte                '0x00']
+              [simple      PathSegment         connectionPathPortSegment]
+              [simple      PathSegment         connectionPathClassSegment]
+              [simple      PathSegment         connectionPathInstanceSegment]
+        ]
+        ['0x4E','true' CipConnectionManagerCloseResponse
+              [simple   uint    8   status]
+              [simple   uint    8   additionalStatusWords]
+              [simple      uint    16          connectionSerialNumber]
+              [simple      uint    16          originatorVendorId]
+              [simple      uint    32          originatorSerialNumber]
+              [simple      uint     8          applicationReplySize]
+              [reserved    uint     8          '0x00']
         ]
         ['0x0A','false' MultipleServiceRequest
                [const  int     8   requestPathSize   0x02]
@@ -114,12 +140,11 @@
                [array      byte   servicesData count 'serviceLen - 6 - (2 * serviceNb)']
         ]
         ['0x52','false'   CipUnconnectedRequest
-               [simple     uint    8    requestPathSize ]
-               [simple     PathSegment  pathSegment0]
-               [simple     PathSegment  pathSegment1]
+               [implicit   uint    8    requestPathSize 'COUNT(pathSegments)']
+               [array      byte         pathSegments    count 'requestPathSize*2']
         ]
         ['0x5B','false'     CipConnectionManagerRequest
-               [simple      int     8           requestPathSize]
+               [implicit      int     8         requestPathSize '(classSegment.lengthInBytes + instanceSegment.lengthInBytes)/2']
                [simple      PathSegment         classSegment]
                [simple      PathSegment         instanceSegment]
                [simple      uint    4           priority]
@@ -169,10 +194,8 @@
         ['0x01'      LogicalSegment
             [simple LogicalSegmentType  segmentType]
         ]
-        ['0x04'      AnsiExtendedSymbolSegment
-            [simple  uint    5   dataSegment]
-            [implicit   uint    8   dataSize    'symbol.length']
-            [simple     vstring 'dataSize'  symbol]
+        ['0x04'      DataSegment
+            [simple DataSegmentType segmentType]
         ]
     ]
 ]
@@ -187,6 +210,21 @@
         ['0x01' InstanceID
             [simple uint    2   format]
             [simple uint    8   instance]
+        ]
+        ['0x02' MemberID
+            [simple uint    2   format]
+            [simple uint    8   instance]
+        ]
+    ]
+]
+
+[discriminatedType DataSegmentType
+    [discriminator  uint    5   dataSegmentType]
+    [typeSwitch dataSegmentType
+        ['0x11'      AnsiExtendedSymbolSegment
+            [implicit   uint    8   dataSize        'symbol.length']
+            [simple     vstring     'dataSize * 8'      symbol]
+            [optional   uint    8   pad         'symbol.length % 2 != 0']
         ]
     ]
 ]
@@ -248,4 +286,39 @@
     ['0x0065'   RegisterSession ]
     ['0x0066'   UnregisterSession ]
     ['0x006F'   SendRRData ]
+]
+
+[enum   uint    32  CIPStatus
+    ['0x00000000'   Success]
+    ['0x00000001'   ConnectionFailure]
+    ['0x00000002'   ResourceUnAvailable]
+    ['0x00000003'   InvalidParameterValue]
+    ['0x00000004'   PathSegmentError]
+    ['0x00000005'   PathDestinationUnknown]
+    ['0x00000006'   PartialTransfer]
+    ['0x00000007'   ConnectionIDNotValid]
+    ['0x00000008'   ServiceNotSupported]
+    ['0x00000009'   InvalidAttributeValue]
+    ['0x0000000A'   AttributeListError]
+    ['0x0000000B'   AlreadyInRequestedState]
+    ['0x0000000C'   ObjectStateConflict]
+    ['0x0000000D'   ObjectAlreadyExists]
+    ['0x0000000E'   AttributeNotSettable]
+    ['0x0000000F'   PriviligeViolation]
+    ['0x00000010'   DeviceStateConflict]
+    ['0x00000011'   ReplyDataTooLarge]
+    ['0x00000012'   FragmentationOfPrimitiveValue]
+    ['0x00000013'   NotEnoughData]
+    ['0x00000014'   AttributeNotSupported]
+    ['0x00000015'   TooMuchData]
+    ['0x00000016'   ObjectDoesNotExist]
+    ['0x00000017'   ServiceFragmentation]
+    ['0x00000018'   NoStoredAttributeData]
+    ['0x00000019'   StoreOperationFailure]
+    ['0x0000001A'   RequestPacketTooLarge]
+    ['0x0000001B'   ResponsePacketTooLarge]
+    ['0x0000001C'   MissingAttributeListEntryData]
+    ['0x0000001D'   InvalidAttributeValueList]
+    ['0x0000001E'   EmbeddedServiceError]
+    ['0x0000001F'   VendorSpecificError]
 ]

@@ -58,13 +58,13 @@
             [reserved       uint    16  '0x0000']
         ]
         ['0x00A1'   ConnectedAddressItem
-            [reserved       uint    16  '0x0400']
+            [reserved       uint    16  '0x0004']
             [simple         uint    32  connectionId]
         ]
         ['0x00B1'   ConnectedDataItem
             [implicit       uint    16  packetSize 'service.lengthInBytes + 2']
             [simple         uint    16  sequenceCount]
-            [simple         CipService('true', 'packetSize - 2', 'order')    service]
+            [simple         CipService('true', 'packetSize', 'order')    service]
         ]
         ['0x00B2'   UnConnectedDataItem
             [implicit       uint    16  packetSize 'service.lengthInBytes']
@@ -151,9 +151,10 @@
                [simple     int     8   slot]
         ]
         ['0x52','false','true'   CipConnectedRequest
-               [implicit   uint    8    requestPathSize 'COUNT(pathSegments)']
-               [array      byte         pathSegments    count 'requestPathSize*2']
-               [reserved   byte    30   '0x00000000']
+               [implicit   uint    8    requestPathSize 'COUNT(pathSegments) / 2']
+               [array      byte         pathSegments    count 'requestPathSize * 2']
+               [reserved   uint    16   '0x0001']
+               [reserved   uint    32   '0x00000000']
         ]
         ['0x5B','false'     CipConnectionManagerRequest
                [implicit      int     8         requestPathSize '(classSegment.lengthInBytes + instanceSegment.lengthInBytes)/2']

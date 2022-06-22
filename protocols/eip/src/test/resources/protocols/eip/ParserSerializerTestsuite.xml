@@ -35,7 +35,7 @@
     <xml>
       <EipPacket>
         <command dataType="uint" bitLength="16">101</command>
-        <len dataType="uint" bitLength="16">4</len>
+        <packetLength dataType="uint" bitLength="16">4</packetLength>
         <sessionHandle dataType="uint" bitLength="32">0</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext dataType="byte" bitLength="64">0x0000000000000000</senderContext>
@@ -60,7 +60,7 @@
     <xml>
       <EipPacket>
         <command dataType="uint" bitLength="16">111</command>
-        <len dataType="uint" bitLength="16">40</len>
+        <packetLength dataType="uint" bitLength="16">40</packetLength>
         <sessionHandle dataType="uint" bitLength="32">4660</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext dataType="byte" bitLength="64">0x0100000000000001</senderContext>
@@ -155,7 +155,7 @@
     <xml>
       <EipPacket>
         <command dataType="uint" bitLength="16">111</command>
-        <len dataType="uint" bitLength="16">26</len>
+        <packetLength dataType="uint" bitLength="16">26</packetLength>
         <sessionHandle dataType="uint" bitLength="32">4660</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext dataType="byte" bitLength="64">0x0100000000000001</senderContext>
@@ -210,7 +210,7 @@
     <xml>
       <EipPacket>
         <command dataType="uint" bitLength="16">111</command>
-        <len dataType="uint" bitLength="16">52</len>
+        <packetLength dataType="uint" bitLength="16">52</packetLength>
         <sessionHandle dataType="uint" bitLength="32">4660</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext dataType="byte" bitLength="64">0x0100000000000001</senderContext>
@@ -309,7 +309,7 @@
     <xml>
       <EipPacket>
         <command dataType="uint" bitLength="16">111</command>
-        <len dataType="uint" bitLength="16">20</len>
+        <packetLength dataType="uint" bitLength="16">20</packetLength>
         <sessionHandle dataType="uint" bitLength="32">4660</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext dataType="byte" bitLength="64">0x0100000000000001</senderContext>
@@ -358,7 +358,7 @@
     <xml>
       <EipPacket>
         <command dataType="uint" bitLength="16">112</command>
-        <len dataType="uint" bitLength="16">51</len>
+        <packetLength dataType="uint" bitLength="16">51</packetLength>
         <sessionHandle dataType="uint" bitLength="32">1074005961</sessionHandle>
         <status dataType="uint" bitLength="32">0</status>
         <senderContext dataType="byte" bitLength="64">0x5765277265000000</senderContext>

@@ -20,6 +20,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/apache/plc4x/plc4go/pkg/api"
 	"github.com/apache/plc4x/plc4go/pkg/api/drivers"
 	"github.com/apache/plc4x/plc4go/pkg/api/logging"
@@ -29,10 +30,8 @@ import (
 	"time"
 )
 
-// TODO: not yet finished... much c&p from knx atm
 func main() {
-	// Set logging to INFO
-	logging.DebugLevel()
+	logging.InfoLevel()
 
 	driverManager := plc4go.NewPlcDriverManager()
 	drivers.RegisterBacnetDriver(driverManager)
@@ -42,12 +41,18 @@ func main() {
 		// Try to auto-find bacnet devices via broadcast-message discovery
 		if err := driverManager.Discover(func(event model.PlcDiscoveryEvent) {
 			connStr := event.GetProtocolCode() + "://" + event.GetTransportUrl().Host
-			log.Info().Str("connection string", connStr).Msg("Found Bacnet Gateway")
+			log.Info().Str("connection string", connStr).Stringer("event", event.(fmt.Stringer)).Msg("Found Bacnet Gateway")
 
 			connectionStrings = append(connectionStrings, connStr)
 		},
 			plc4go.WithDiscoveryOptionProtocolSpecific("who-is-low-limit", 0),
 			plc4go.WithDiscoveryOptionProtocolSpecific("who-is-high-limit", "255"),
+			plc4go.WithDiscoveryOptionProtocolSpecific("who-has-device-instance-range-low-limit", "0"),
+			plc4go.WithDiscoveryOptionProtocolSpecific("who-has-device-instance-range-high-limit", "255"),
+			// Either use name or the 2 identifier tuple below
+			plc4go.WithDiscoveryOptionProtocolSpecific("who-has-object-name", "john"),
+			//plc4go.WithDiscoveryOptionProtocolSpecific("who-has-object-identifier-type", "DEVICE"),
+			//plc4go.WithDiscoveryOptionProtocolSpecific("who-has-object-identifier-instance", "133"),
 		); err != nil {
 			panic(err)
 		}
